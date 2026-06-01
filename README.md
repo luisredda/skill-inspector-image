@@ -56,74 +56,28 @@ For enhanced semantic analysis, configure an LLM provider:
 
 ## Harness STO Integration
 
-### Example Pipeline YAML
+### Pipeline Setup
+
+Your Harness pipeline should:
+1. Clone Skillspector to `/skillspector/` (you already have this configured)
+2. Add a **Run step** before Build to copy Skillspector into the build context:
 
 ```yaml
-pipeline:
-  name: Skill Security Scan
-  stages:
-    - stage:
-        name: Security
-        identifier: security
-        type: SecurityTests
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
-                  type: Security
-                  name: Skillspector Scan
-                  identifier: skillspector_scan
-                  spec:
-                    privileged: false
-                    settings:
-                      policy_type: ingestionOnly
-                      scan_type: repository
-                      repository_project: <+pipeline.name>
-                      repository_branch: <+codebase.branch>
-                      product_name: skillspector
-                      product_config_name: default
-                      fail_on_severity: CRITICAL
-                    imagePullPolicy: Always
-                    connectorRef: <+input>
-                    resources:
-                      limits:
-                        memory: 1Gi
-                        cpu: 1000m
-                    image: skillspector-sto:latest
-                    shell: Sh
-                    command: |-
-                      # Scan specific path or entire workspace
-                      export SCAN_PATH="<+input.default(<+workspace>)>"
-                      export OUTPUT_PATH="/harness/results.sarif"
-                      export VERBOSE="false"
-                      
-                      # Run scan
-                      /entrypoint.sh
-                      
-                      # Ingest results into Harness STO
-                      cat /harness/results.sarif
+- step:
+    type: Run
+    name: Copy Skillspector to Build Context
+    identifier: copy_skillspector
+    spec:
+      shell: Sh
+      command: |-
+        # Copy Skillspector source into build context
+        cp -r /skillspector/* .
+        
+        # Verify pyproject.toml exists
+        test -f pyproject.toml && echo "✓ pyproject.toml found" || echo "✗ pyproject.toml missing"
 ```
 
-### Pipeline Parameters
-
-You can expose `SCAN_PATH` as a pipeline input:
-
-```yaml
-inputs:
-  - name: scan_path
-    type: String
-    description: Path to scan for skill files
-    default: <+workspace>
-```
-
-Then reference it in the step:
-
-```yaml
-command: |-
-  export SCAN_PATH="<+pipeline.variables.scan_path>"
-  /entrypoint.sh
-```
+Then your **BuildAndPushDockerRegistry** step will build from `.` which now contains Skillspector's source files.
 
 ## Local Testing
 
