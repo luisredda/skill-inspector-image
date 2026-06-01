@@ -1,9 +1,11 @@
 FROM python:3.12-slim
 
-# Set working directory for building the tool
+# Set working directory
 WORKDIR /skillspector
 
-# Copy Skillspector source code (cloned by Harness CI step)
+# Copy Skillspector source code (from build context)
+# Note: Your Harness pipeline should copy this Dockerfile to /skillspector/
+# and set the build context to /skillspector/
 COPY . .
 
 # Build and install Skillspector
